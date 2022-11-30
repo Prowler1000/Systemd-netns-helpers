@@ -1,0 +1,20 @@
+[Unit]
+Description=NetNS Helper Test Service
+
+Requires=netns-prepare@test.service
+After=netns-init@test.service
+JoinsNamespaceOf=netns-init@test.service
+
+After=netns-prepare@test.service
+JoinsNamespaceOf=netns-prepare@test.service
+
+[Service]
+Type=simple
+RemainAfterStart=true
+
+PrivateNetwork=true
+
+ExecStart=/usr/bin/nc --send-only --exec "/usr/bin/echo OK" -lkp 25565
+
+[Install]
+WantedBy-multi-user.target

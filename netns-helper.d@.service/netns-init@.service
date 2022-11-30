@@ -1,0 +1,18 @@
+[Unit]
+Description=Set up network namespace %i
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/systemd/system/netns-helper@.service.d/netns-helper.conf
+
+PrivateNetwork=yes
+
+ExecStart=${IP_PATH} netns add %i
+
+ExecStart=${UMOUNT_PATH} ${NETNS_PATH}/%i
+
+ExecStart=${MOUNT_PATH} --bind /proc/self/ns/net ${NETNS_PATH}/%i
+
+ExecStop=${IP_PATH} netns delete %i
+
