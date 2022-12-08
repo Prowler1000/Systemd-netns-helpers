@@ -1,0 +1,23 @@
+# An example service that uses the namespace. I made this for use with qBitTorrent so that's what I'll use in the example.
+# Simply a modified unit file from the one swizzin provided (Why is there no version command for Swizzin??) in the last few months of 2022.
+
+# While typing this out I see a bit of a flaw in that, if multiple users on the same system try to use this, it will quite simply not work or fail horribly. Either way, not great
+
+[Unit]
+Description=qBittorrent-nox service for %i
+Documentation=man:qbittorrent-nox(1)
+Wants=network-online.target
+
+Requires=netns-init@qbit.service netns-prepare@qbit.service
+After=network-online.target nss-lookup.target netns-init@qbit.service netns-prepare@qbit.service
+JoinsNamespaceOf=netns-init@qbit.service
+
+[Service]
+Type=exec
+User=%i
+Group=%i
+PrivateNetwork=true
+ExecStart=/usr/bin/qbittorrent-nox
+
+[Install]
+WantedBy=multi-user.target

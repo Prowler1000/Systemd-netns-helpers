@@ -1,0 +1,68 @@
+[Unit]
+Description=Prepare network namespace for use.
+Requires=netns-init@%i.service
+After=netns-init@%i.service
+
+[Service]
+# Below are variables that are required to be set in order to use this service. 
+# At least on Debian 11, you can use the command `systemctl edit netns-prepare@name.service` to configure these variables, where 'name' is the relevant name for this service.
+# If you found this and systemd is extremely new to you, searching up "What does '@' do systemd" may be of some help.
+# When I was figuring out how to make this, (https://superuser.com/questions/393423/the-symbol-and-systemctl-and-vsftpd) was a lot of help to me.
+
+# Environment=EXT_ADAPT_NAME=%i-eth0
+# Environment=EXT_ADAPT_ADDR=192.168.0.1
+# Environment=INT_ADAPT_NAME=%i-eth1
+# Environment=INT_ADAPT_ADDR=192.168.0.2
+# Environment=WAN_ADAPT_NAME=enp0s31f6
+
+# EXT_ADAPT_NAME is the name of the virtual adapter outside of the namespace, providing bi-directional access to the namespace.
+# EXT_ADAPT_ADDR is the address of the virtual adapter outside of the name space
+# INT_ADAPT_NAME is the name of the virtual adapter inside of the name space.
+# INT_ADAPT_ADDR is the address of the virtual adapter inside of the nane space.
+# WAN_ADAPT_NAME is the name of the adapter your system uses to access the internet.
+
+Type=ontshot
+RemainAfterExit=yes
+
+# Create the virtual adapter pair
+ExecStart=ip link add ${EXT_ADAPT_NAME} type veth peer name ${INT_ADAPT_NAME}
+
+# Set the internal adapter to reside inside the namespace
+ExecStart=ip link set ${INT_ADAPT_NAME} netns %i
+
+# Add the relevant address to the external adapter and bring it up
+ExecStart=ip addr add ${EXT_ADAPT_ADDR}/24 dev ${EXT_ADAPT_NAME}
+ExecStart=ip link set ${EXT_ADAPT_NAME} up
+
+# Add the relevant address to the internal adapter, bring it up, and add a default route inside the namespace
+ExecStart=ip netns exec %i ip addr add ${INT_ADAPT_ADDR}/24 dev ${INT_ADAPT_NAME}
+ExecStart=ip netns exec %i ip link set ${INT_ADAPT_NAME} up
+ExecStart=ip netns exec %i ip link set lo up
+ExecStart=ip netns exec %i ip route add default via ${EXT_ADAPT_ADDR}
+
+# Enable IP Forwarding. I've found this doesn't work and I had to enable it outside systemd but leaving it here regardless
+ExecStart=echo 1 > /proc/sys/net/ipv4/ip_forward
+
+# Flush IP tables forward rules. Probably shouldn't do this however no checks are made to ensure the same rule isn't added twice.
+# I'm lazy and it works for me but if someone complains I'm sure I'll find the motivation to fix it.
+ExecStart=iptables -P FORWARD DROP
+ExecStart=iptables -F FORWARD
+
+# Flush NAT rules. See previous comments. (Watch me change those and forget about this lol)
+ExecStart=iptables -t nat -F
+
+# Tell IP Tables to masquerade traffic leaving the system from inside the namespace.
+ExecStart=iptables -t nat -A POSTROUTING -s ${INT_ADAPT_ADDR}/24 -o ${WAN_ADAPT_NAME} -j MASQUERADE
+
+# Tell IP Tables to accept (and forward? I'm not well versed in IP Tables) connections between the internet and the external adapter for our namespace
+ExecStart=iptables -A FORWARD -i ${WAN_ADAPT_NAME} -o ${EXT_ADAPT_NAME} -j ACCEPT
+ExecStart=iptables -A FORWARD -o ${WAN_ADAPT_NAME} -i ${EXT_ADAPT_NAME} -j ACCEPT
+
+# Bring up Wireguard interface inside container
+# This is entirely optional but only routing a SINGLE app through a VPN is why I needed this solution.
+# In what world is manually adding exceptions for every app EXCEPT the one you want a valid solution?
+# You can't even really do that programatically from what I found. Hecking dumb, so I did this.
+# ExecStart=ip netns exec %i wg-quick up wg0
+
+# When the service is stopped, delete the external adapter which SHOULD also delete the internal adapter.
+ExecStop=ip link del ${EXT_ADAPT_NAME}

@@ -1,0 +1,14 @@
+[Unit]
+Description=Create network namespace %i
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+PrivateNetwork=yes
+
+ExecStart=ip netns add %i
+ExecStart=umount /run/netns/%i
+ExecStart=mount --bind /proc/self/ns/net /run/netns/%i
+
+ExecStop=ip netns delete %i
