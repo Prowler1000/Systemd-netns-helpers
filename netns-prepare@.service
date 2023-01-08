@@ -21,7 +21,7 @@ After=netns-init@%i.service
 # INT_ADAPT_ADDR is the address of the virtual adapter inside of the nane space.
 # WAN_ADAPT_NAME is the name of the adapter your system uses to access the internet.
 
-Type=ontshot
+Type=oneshot
 RemainAfterExit=yes
 
 # Create the virtual adapter pair
