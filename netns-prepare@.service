@@ -43,20 +43,12 @@ ExecStart=ip netns exec %i ip route add default via ${EXT_ADAPT_ADDR}
 # Enable IP Forwarding. I've found this doesn't work and I had to enable it outside systemd but leaving it here regardless
 ExecStart=echo 1 > /proc/sys/net/ipv4/ip_forward
 
-# Flush IP tables forward rules. Probably shouldn't do this however no checks are made to ensure the same rule isn't added twice.
-# I'm lazy and it works for me but if someone complains I'm sure I'll find the motivation to fix it.
-ExecStart=iptables -P FORWARD DROP
-ExecStart=iptables -F FORWARD
-
-# Flush NAT rules. See previous comments. (Watch me change those and forget about this lol)
-ExecStart=iptables -t nat -F
-
 # Tell IP Tables to masquerade traffic leaving the system from inside the namespace.
-ExecStart=iptables -t nat -A POSTROUTING -s ${INT_ADAPT_ADDR}/24 -o ${WAN_ADAPT_NAME} -j MASQUERADE
+ExecStart=iptables -t nat -C POSTROUTING -s ${INT_ADAPT_ADDR}/24 -o ${WAN_ADAPT_NAME} -j MASQUERADE || iptables -t nat -A POSTROUTING -s ${INT_ADAPT_ADDR}/24 -o ${WAN_ADAPT_NAME} -j MASQUERADE
 
 # Tell IP Tables to accept (and forward? I'm not well versed in IP Tables) connections between the internet and the external adapter for our namespace
-ExecStart=iptables -A FORWARD -i ${WAN_ADAPT_NAME} -o ${EXT_ADAPT_NAME} -j ACCEPT
-ExecStart=iptables -A FORWARD -o ${WAN_ADAPT_NAME} -i ${EXT_ADAPT_NAME} -j ACCEPT
+ExecStart=iptables -C FORWARD -i ${WAN_ADAPT_NAME} -o ${EXT_ADAPT_NAME} -j ACCEPT || iptables -A FORWARD -i ${WAN_ADAPT_NAME} -o ${EXT_ADAPT_NAME} -j ACCEPT
+ExecStart=iptables -C FORWARD -o ${WAN_ADAPT_NAME} -i ${EXT_ADAPT_NAME} -j ACCEPT || iptables -A FORWARD -o ${WAN_ADAPT_NAME} -i ${EXT_ADAPT_NAME} -j ACCEPT
 
 # Bring up Wireguard interface inside container
 # This is entirely optional but only routing a SINGLE app through a VPN is why I needed this solution.
