@@ -40,15 +40,8 @@ ExecStart=ip netns exec %i ip link set ${INT_ADAPT_NAME} up
 ExecStart=ip netns exec %i ip link set lo up
 ExecStart=ip netns exec %i ip route add default via ${EXT_ADAPT_ADDR}
 
-# Enable IP Forwarding. I've found this doesn't work and I had to enable it outside systemd but leaving it here regardless
-ExecStart=echo 1 > /proc/sys/net/ipv4/ip_forward
-
-# Tell IP Tables to masquerade traffic leaving the system from inside the namespace.
-ExecStart=iptables -t nat -C POSTROUTING -s ${INT_ADAPT_ADDR}/24 -o ${WAN_ADAPT_NAME} -j MASQUERADE || iptables -t nat -A POSTROUTING -s ${INT_ADAPT_ADDR}/24 -o ${WAN_ADAPT_NAME} -j MASQUERADE
-
-# Tell IP Tables to accept (and forward? I'm not well versed in IP Tables) connections between the internet and the external adapter for our namespace
-ExecStart=iptables -C FORWARD -i ${WAN_ADAPT_NAME} -o ${EXT_ADAPT_NAME} -j ACCEPT || iptables -A FORWARD -i ${WAN_ADAPT_NAME} -o ${EXT_ADAPT_NAME} -j ACCEPT
-ExecStart=iptables -C FORWARD -o ${WAN_ADAPT_NAME} -i ${EXT_ADAPT_NAME} -j ACCEPT || iptables -A FORWARD -o ${WAN_ADAPT_NAME} -i ${EXT_ADAPT_NAME} -j ACCEPT
+#Execute the netns-iptables-helper script. Change this to wherever it's located for you
+#ExecStart/usr/local/bin/netns-iptables-helper.sh
 
 # Bring up Wireguard interface inside container
 # This is entirely optional but only routing a SINGLE app through a VPN is why I needed this solution.
