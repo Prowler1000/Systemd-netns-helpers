@@ -41,7 +41,7 @@ ExecStart=ip netns exec %i ip link set lo up
 ExecStart=ip netns exec %i ip route add default via ${EXT_ADAPT_ADDR}
 
 #Execute the netns-iptables-helper script. Change this to wherever it's located for you
-#ExecStart/usr/local/bin/netns-iptables-helper.sh
+#ExecStart/usr/local/bin/netns-iptables-helper.sh ${WAN_ADAPT_NAME} ${EXT_ADAPT_NAME} ${EXT_ADAPT_ADDR} ${INT_ADAPT_NAME} ${INT_ADAPT_ADDR}
 
 # Bring up Wireguard interface inside container
 # This is entirely optional but only routing a SINGLE app through a VPN is why I needed this solution.
